@@ -1,21 +1,77 @@
+// src/pages/EditUser.jsx
 import { useParams, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AppLayout from "../components/AppLayout";
+import { db } from "../firebase";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 export default function EditUser() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const users = JSON.parse(localStorage.getItem("mockUsers") || "[]");
 
-  const existing = users[id];
-  const [form, setForm] = useState(existing);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    role: "educator",
+    classRoom: "",
+    avatar: "",
+  });
+  const [loading, setLoading] = useState(true);
 
-  const updateUser = () => {
-    users[id] = form;
-    localStorage.setItem("mockUsers", JSON.stringify(users));
-    alert("User updated.");
-    navigate("/users");
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const ref = doc(db, "users", id);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+          alert("User not found.");
+          navigate("/users");
+          return;
+        }
+        const data = snap.data();
+        setForm({
+          name: data.name || "",
+          email: data.email || "",
+          role: data.role || "educator",
+          classRoom: data.classRoom || "",
+          avatar: data.avatar || "",
+        });
+      } catch (err) {
+        console.error("Error loading user:", err);
+        alert("Failed to load user.");
+        navigate("/users");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUser();
+  }, [id, navigate]);
+
+  const updateUser = async () => {
+    try {
+      await updateDoc(doc(db, "users", id), {
+        name: form.name,
+        email: form.email,
+        role: form.role,
+        classRoom: form.classRoom,
+        avatar: form.avatar,
+      });
+      alert("User updated.");
+      navigate("/users");
+    } catch (err) {
+      console.error("Error updating user:", err);
+      alert("Failed to update user.");
+    }
   };
+
+  if (loading) {
+    return (
+      <AppLayout title="Edit User">
+        <p>Loading user…</p>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout title="Edit User">
@@ -45,6 +101,13 @@ export default function EditUser() {
           <option value="educator">Educator</option>
           <option value="admin">Admin</option>
         </select>
+
+        <label>Class</label>
+        <input
+          style={styles.input}
+          value={form.classRoom}
+          onChange={(e) => setForm({ ...form, classRoom: e.target.value })}
+        />
 
         <button style={styles.button} onClick={updateUser}>
           Save
@@ -78,5 +141,6 @@ const styles = {
     borderRadius: 10,
     fontWeight: 600,
     marginTop: 10,
+    cursor: "pointer",
   },
 };

@@ -1,3 +1,4 @@
+// src/App.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
@@ -19,9 +20,6 @@ export default function App() {
       <Route path="/users" element={<Users />} />
       <Route path="/edit-user/:id" element={<EditUser />} />
       <Route path="/test" element={<TestFirestore />} />
-
-
-
 
       {/* Redirect any unknown route to login */}
       <Route path="*" element={<Navigate to="/" />} />

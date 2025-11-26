@@ -1,17 +1,46 @@
-import AppLayout from "../components/AppLayout";
+// src/pages/Users.jsx
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import AppLayout from "../components/AppLayout";
+import { db } from "../firebase";
+import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 
 export default function Users() {
   const navigate = useNavigate();
-  const users = JSON.parse(localStorage.getItem("mockUsers") || "[]");
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const deleteUser = (index) => {
-    if (!confirm("Delete this user?")) return;
-
-    const updated = users.filter((_, i) => i !== index);
-    localStorage.setItem("mockUsers", JSON.stringify(updated));
-    window.location.reload();
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const snap = await getDocs(collection(db, "users"));
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setUsers(list);
+    } catch (err) {
+      console.error("Error loading users:", err);
+      alert("Failed to load users.");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const deleteUser = async (id) => {
+    if (!confirm("Delete this user?")) return;
+    try {
+      await deleteDoc(doc(db, "users", id));
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+    } catch (err) {
+      console.error("Error deleting user:", err);
+      alert("Failed to delete user.");
+    }
+  };
+
+  const themeMode = localStorage.getItem("themeMode") || "light";
+  const isDark = themeMode === "dark";
 
   return (
     <AppLayout title="Users">
@@ -27,14 +56,20 @@ export default function Users() {
           </button>
         </div>
 
-        {users.length === 0 && (
+        {loading && (
+          <p style={{ fontSize: 16, opacity: 0.6, marginTop: 20 }}>
+            Loading users…
+          </p>
+        )}
+
+        {!loading && users.length === 0 && (
           <p style={{ fontSize: 16, opacity: 0.6, marginTop: 20 }}>
             No users added yet.
           </p>
         )}
 
-        {users.map((u, i) => (
-          <div key={i} style={styles.userRow}>
+        {users.map((u) => (
+          <div key={u.id} style={styles.userRow}>
             <div style={styles.userInfo}>
               <img
                 src={u.avatar || "/placeholder.png"}
@@ -44,21 +79,23 @@ export default function Users() {
               <div>
                 <div style={styles.userName}>{u.name}</div>
                 <div style={styles.userEmail}>{u.email}</div>
-                <div style={styles.userRole}>{u.role}</div>
+                <div style={styles.userRole}>
+                  {u.role} {u.classRoom ? `• ${u.classRoom}` : ""}
+                </div>
               </div>
             </div>
 
             <div style={styles.actions}>
               <button
                 style={styles.editBtn}
-                onClick={() => navigate(`/edit-user/${i}`)}
+                onClick={() => navigate(`/edit-user/${u.id}`)}
               >
                 ✏️ Edit
               </button>
 
               <button
                 style={styles.deleteBtn}
-                onClick={() => deleteUser(i)}
+                onClick={() => deleteUser(u.id)}
               >
                 🗑 Delete
               </button>

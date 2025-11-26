@@ -1,6 +1,8 @@
 // src/pages/AddUser.jsx
 import React, { useState } from "react";
 import AppLayout from "../components/AppLayout";
+import { db } from "../firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function AddUser() {
   const [form, setForm] = useState({
@@ -52,18 +54,48 @@ export default function AddUser() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e) => {
+  // 🔧 basic form validation
+  const validate = () => {
+    if (!form.name.trim()) return "Full name is required.";
+    if (!form.email.trim()) return "Email is required.";
+    if (!/\S+@\S+\.\S+/.test(form.email)) return "Please enter a valid email.";
+    if (!form.password || form.password.length < 6)
+      return "Password must be at least 6 characters.";
+    return "";
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
 
-    if (!form.name) return setError("Name is required");
-    if (!form.email) return setError("Email is required");
-    if (!form.password) return setError("Password is required");
-    if (pwStrength.label === "Weak")
-      return setError("Password is too weak");
+    const err = validate();
+    if (err) {
+      setError(err);
+      return;
+    }
 
-    setSuccess("User added successfully (local mode).");
+    try {
+      await addDoc(collection(db, "users"), {
+        ...form,
+        createdAt: serverTimestamp(),
+      });
+
+      setSuccess("User added successfully.");
+      setForm({
+        name: "",
+        email: "",
+        role: "educator",
+        classRoom: "Grade 1A",
+        password: "",
+        avatar: "",
+      });
+      setAvatarPreview("");
+      setPwStrength({ score: 0, label: "" });
+    } catch (error) {
+      console.error(error);
+      setError("Failed to save user.");
+    }
   };
 
   return (
@@ -74,8 +106,10 @@ export default function AddUser() {
         {error && <div style={styles.error}>{error}</div>}
         {success && <div style={styles.success}>{success}</div>}
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: "flex", flexDirection: "column", gap: 16 }}
+        >
           <label style={styles.label}>Full Name</label>
           <input
             style={styles.input}
@@ -144,12 +178,19 @@ export default function AddUser() {
               <img
                 src={avatarPreview}
                 alt="preview"
-                style={{ width: 60, height: 60, borderRadius: 8, objectFit: "cover" }}
+                style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: 8,
+                  objectFit: "cover",
+                }}
               />
             )}
           </div>
 
-          <button type="submit" style={styles.button}>Add User</button>
+          <button type="submit" style={styles.button}>
+            Add User
+          </button>
         </form>
       </div>
     </AppLayout>

@@ -41,8 +41,8 @@ export default function TestFirestore() {
           marginTop: 20,
         }}
       >
-        Test Firestore
-      </button>
+       Testfirestore
+       </button>
     </div>
   );
 }
